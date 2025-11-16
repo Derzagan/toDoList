@@ -31,6 +31,5 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, add_task.class);
             startActivity(intent);
         });
-
     }
 }
