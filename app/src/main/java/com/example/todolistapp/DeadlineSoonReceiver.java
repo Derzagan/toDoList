@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
@@ -18,13 +20,17 @@ public class DeadlineSoonReceiver extends BroadcastReceiver {
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
                 == PackageManager.PERMISSION_GRANTED) {
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "todo_channel")
+            Uri soundUri = Uri.parse("android.resource://" +
+                    context.getPackageName() + "/" + R.raw.malovrem);
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "todo_soon")
                     .setSmallIcon(android.R.drawable.ic_dialog_alert)
                     .setContentTitle("До дедлайна осталось 30 минут")
                     .setContentText(taskName)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setAutoCancel(true)
-                    .setVibrate(new long[]{0,500,500,500});
+                    .setVibrate(new long[]{0, 500, 500, 500})
+                    .setSound(soundUri);
 
             manager.notify((int) System.currentTimeMillis(), builder.build());
         }

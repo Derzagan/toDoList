@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.todolistapp">
 
-    <!-- Разрешение для уведомлений Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -13,24 +12,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ToDoListApp">
 
-        <!-- Ресиверы для уведомлений -->
-        <receiver android:name=".DeadlineSoonReceiver" />
-        <receiver android:name=".DeadlineReachedReceiver" />
+        <receiver
+            android:name=".DeadlineSoonReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".DeadlineReachedReceiver"
+            android:exported="false" />
 
         <activity
             android:name=".add_task"
             android:exported="false" />
 
         <activity
-            android:name=".item_task"
-            android:exported="false" />
-
-        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
