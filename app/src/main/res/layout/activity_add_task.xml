@@ -9,8 +9,6 @@
     android:background="#121212"
     android:padding="24dp">
 
-
-
     <TextView
         android:id="@+id/textAddTitle"
         android:layout_width="wrap_content"
@@ -22,6 +20,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
+
     <EditText
         android:id="@+id/inputTaskTitle"
         android:layout_width="0dp"
@@ -35,6 +34,7 @@
         app:layout_constraintTop_toBottomOf="@id/textAddTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
     <Button
         android:id="@+id/btnPickDate"
         android:layout_width="wrap_content"
@@ -67,23 +67,5 @@
         app:layout_constraintTop_toBottomOf="@id/textSelectedDate"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -28,6 +28,7 @@ public class Task {
     public boolean isCompleted() { return completed; }
     public void setCompleted(boolean completed) { this.completed = completed; }
 
+    // Просрочена ли задача (дедлайн прошёл и не выполнена)
     public boolean isOverdue() {
         return !completed && dueDateMillis < System.currentTimeMillis();
     }

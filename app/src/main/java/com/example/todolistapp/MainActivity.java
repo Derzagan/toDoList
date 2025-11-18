@@ -3,6 +3,8 @@ package com.example.todolistapp;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -36,6 +38,15 @@ public class MainActivity extends AppCompatActivity {
     private final List<Task> allTasks = new ArrayList<>();
     private Long filterStartOfDay = null;
     private Long filterEndOfDay = null;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable overdueChecker = new Runnable() {
+        @Override
+        public void run() {
+            applyFilter();                      // пересчитать isOverdue() и обновить UI
+            handler.postDelayed(this, 30_000);  // повторять каждые 30 секунд
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,6 +91,18 @@ public class MainActivity extends AppCompatActivity {
 
         btnFilterDate.setOnClickListener(v -> openDatePicker());
         textClearFilter.setOnClickListener(v -> clearFilter());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        handler.post(overdueChecker);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(overdueChecker);
     }
 
     @Override
