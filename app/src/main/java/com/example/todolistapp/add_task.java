@@ -2,6 +2,7 @@ package com.example.todolistapp;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,6 +24,7 @@ public class add_task extends AppCompatActivity {
     Button btnPickDateTime, btnSaveTask;
     TextView textSelectedDate;
     Calendar calendar = Calendar.getInstance();
+    boolean dateChosen = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,25 +38,32 @@ public class add_task extends AppCompatActivity {
             return insets;
         });
 
-        // Находим элементы
         inputTaskTitle = findViewById(R.id.inputTaskTitle);
         textSelectedDate = findViewById(R.id.textSelectedDate);
         btnPickDateTime = findViewById(R.id.btnPickDate);
         btnSaveTask = findViewById(R.id.btnSaveTask);
 
-        // Выбор даты и времени одной кнопкой
         btnPickDateTime.setOnClickListener(v -> showDateTimePicker());
 
-        // Сохранение задачи
         btnSaveTask.setOnClickListener(v -> {
-            String taskName = inputTaskTitle.getText().toString();
+            String taskName = inputTaskTitle.getText().toString().trim();
+            if (taskName.isEmpty()) {
+                inputTaskTitle.setError("Введите название задачи");
+                return;
+            }
+            if (!dateChosen) {
+                textSelectedDate.setText("Сначала выберите дату и время");
+                return;
+            }
+
             long deadlineTime = calendar.getTimeInMillis();
 
-            // TODO: Сохраняем задачу и отправляем уведомления
-            // schedule30minBefore(deadlineTime, taskName);
-            // scheduleDeadlineReached(deadlineTime, taskName);
+            Intent data = new Intent();
+            data.putExtra("title", taskName);
+            data.putExtra("deadlineMillis", deadlineTime);
+            setResult(RESULT_OK, data);
 
-            finish(); // закрываем экран добавления
+            finish();
         });
     }
 
@@ -87,7 +96,7 @@ public class add_task extends AppCompatActivity {
 
                     SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
                     textSelectedDate.setText(sdf.format(calendar.getTime()));
-
+                    dateChosen = true;
                 }, hour, minute, true);
 
         timePickerDialog.show();
