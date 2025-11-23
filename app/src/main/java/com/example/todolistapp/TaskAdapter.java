@@ -59,28 +59,34 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         boolean isOverdue = task.isOverdue();
         boolean isCompleted = task.isCompleted();
 
+        // Иконка чекбокса
         holder.iconDone.setImageResource(
                 isCompleted ? android.R.drawable.checkbox_on_background
                         : android.R.drawable.checkbox_off_background
         );
 
+        // Стиль текста (зачёркнуто)
         if (isOverdue || isCompleted) {
             holder.textTaskTitle.setPaintFlags(
-                    holder.textTaskTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                    holder.textTaskTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG
+            );
             holder.textTaskTitle.setTextColor(0xFFB0BEC5);
         } else {
             holder.textTaskTitle.setPaintFlags(
-                    holder.textTaskTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+                    holder.textTaskTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG)
+            );
             holder.textTaskTitle.setTextColor(0xFFFFFFFF);
         }
 
+        // Клик по чекбоксу
         holder.iconDone.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onTaskCompletedChanged(task, !task.isCompleted());
             }
         });
 
-        holder.btnMore.setOnClickListener(v -> {
+        // Кнопка удаления
+        holder.btnDelete.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onTaskDelete(task);
             }
@@ -96,14 +102,15 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         ImageView iconDone;
         TextView textTaskTitle;
         TextView textTaskDate;
-        ImageButton btnMore;
+        ImageButton btnDelete;
 
         TaskViewHolder(@NonNull View itemView) {
             super(itemView);
+
             iconDone = itemView.findViewById(R.id.iconDone);
             textTaskTitle = itemView.findViewById(R.id.textTaskTitle);
             textTaskDate = itemView.findViewById(R.id.textTaskDate);
-            btnMore = itemView.findViewById(R.id.btnMore);
+            btnDelete = itemView.findViewById(R.id.btnDelete);
         }
     }
 }

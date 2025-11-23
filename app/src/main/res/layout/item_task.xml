@@ -15,6 +15,7 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
+        <!-- Чекбокс -->
         <ImageView
             android:id="@+id/iconDone"
             android:layout_width="28dp"
@@ -22,6 +23,7 @@
             app:srcCompat="@android:drawable/checkbox_off_background"
             app:tint="#03DAC5" />
 
+        <!-- Название задачи -->
         <TextView
             android:id="@+id/textTaskTitle"
             android:layout_width="0dp"
@@ -34,6 +36,7 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
+        <!-- Дата -->
         <TextView
             android:id="@+id/textTaskDate"
             android:layout_width="wrap_content"
@@ -44,14 +47,16 @@
             android:textColor="#B0BEC5"
             android:textSize="13sp" />
 
+        <!-- Иконка удаления -->
         <ImageButton
-            android:id="@+id/btnMore"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Дополнительные действия"
-            app:srcCompat="@android:drawable/ic_menu_more"
-            app:tint="#B0BEC5" />
+            android:contentDescription="Удалить задачу"
+            app:srcCompat="@drawable/ic_delete"
+            app:tint="#E57373" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>
