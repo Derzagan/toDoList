@@ -52,11 +52,12 @@ public class MainActivity extends AppCompatActivity {
     private Long filterEndOfDay = null;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+
     private final Runnable overdueChecker = new Runnable() {
         @Override
         public void run() {
-            applyFilter();                      // пересчитать isOverdue() и обновить UI
-            handler.postDelayed(this, 30_000);  // повторять каждые 30 секунд
+            applyFilter();
+            handler.postDelayed(this, 30000);
         }
     };
 
@@ -82,16 +83,20 @@ public class MainActivity extends AppCompatActivity {
         taskAdapter = new TaskAdapter(new ArrayList<>());
         recyclerViewTasks.setAdapter(taskAdapter);
 
+        loadTasks();
+
         taskAdapter.setOnTaskActionListener(new TaskAdapter.OnTaskActionListener() {
             @Override
             public void onTaskCompletedChanged(Task task, boolean isCompleted) {
                 task.setCompleted(isCompleted);
+                FirestoreTaskRepository.saveTask(task);
                 applyFilter();
             }
 
             @Override
             public void onTaskDelete(Task task) {
                 allTasks.remove(task);
+                FirestoreTaskRepository.deleteTask(task);
                 applyFilter();
             }
         });
@@ -104,48 +109,50 @@ public class MainActivity extends AppCompatActivity {
         btnFilterDate.setOnClickListener(v -> openDatePicker());
         textClearFilter.setOnClickListener(v -> clearFilter());
 
-        // Каналы уведомлений и разрешение
         createNotificationChannels();
         requestNotificationPermissionIfNeeded();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        handler.post(overdueChecker);
+    // ---------- FIRESTORE LOAD ----------
+    private void loadTasks() {
+        FirestoreTaskRepository.loadTasks(tasks -> {
+            allTasks.clear();
+            allTasks.addAll(tasks);
+            applyFilter();
+        });
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        handler.removeCallbacks(overdueChecker);
-    }
-
+    // ---------- ADD TASK ----------
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == REQUEST_ADD_TASK && resultCode == RESULT_OK && data != null) {
+
             String title = data.getStringExtra("title");
             long deadlineMillis = data.getLongExtra("deadlineMillis", -1);
 
             if (title != null && deadlineMillis > 0) {
+
                 Task task = new Task(
                         String.valueOf(System.currentTimeMillis()),
                         title,
                         deadlineMillis,
                         false
                 );
+
                 allTasks.add(task);
+                FirestoreTaskRepository.saveTask(task);
                 applyFilter();
 
-                // после добавления задачи ставим будильники
                 scheduleNotifications(task);
             }
         }
     }
 
-    // ---------- КАНАЛЫ УВЕДОМЛЕНИЙ ----------
+    // -------------------------------------
+    //     УВЕДОМЛЕНИЯ
+    // -------------------------------------
 
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -153,139 +160,103 @@ public class MainActivity extends AppCompatActivity {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager == null) return;
 
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+            AudioAttributes attrs = new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build();
 
-            // Канал для напоминания за 30 минут (звук malovrem)
-            Uri soonSound = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.malovrem);
-            NotificationChannel channelSoon = new NotificationChannel(
+            NotificationChannel soon = new NotificationChannel(
                     "todo_soon",
-                    "Напоминание за 30 минут",
+                    "Напоминание",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channelSoon.setDescription("Уведомления за 30 минут до дедлайна");
-            channelSoon.setSound(soonSound, audioAttributes);
+            soon.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.malovrem), attrs);
 
-            // Канал для уведомления о дедлайне (звук opazdal)
-            Uri deadlineSound = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.opazdal);
-            NotificationChannel channelDeadline = new NotificationChannel(
+            NotificationChannel deadline = new NotificationChannel(
                     "todo_deadline",
-                    "Уведомление о дедлайне",
+                    "Дедлайн",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channelDeadline.setDescription("Уведомления в момент наступления дедлайна");
-            channelDeadline.setSound(deadlineSound, audioAttributes);
+            deadline.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.opazdal), attrs);
 
-            manager.createNotificationChannel(channelSoon);
-            manager.createNotificationChannel(channelDeadline);
+            manager.createNotificationChannel(soon);
+            manager.createNotificationChannel(deadline);
         }
     }
 
     private void requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= 33) {
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.POST_NOTIFICATIONS)
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
 
-                ActivityCompat.requestPermissions(this,
+                ActivityCompat.requestPermissions(
+                        this,
                         new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        REQUEST_NOTIF_PERMISSION);
+                        REQUEST_NOTIF_PERMISSION
+                );
             }
         }
     }
 
-    // ---------- ПЛАНИРОВАНИЕ УВЕДОМЛЕНИЙ ----------
-
+    // ---------- ALARMS ----------
     private void scheduleNotifications(Task task) {
         long now = System.currentTimeMillis();
         long due = task.getDueDateMillis();
 
-        if (due <= now) {
-            // дедлайн уже прошёл — уведомления не ставим
-            return;
-        }
+        if (due <= now) return;
 
-        // За 30 минут до дедлайна
-        long soonTime = due - 30 * 60 * 1000L;
-        if (soonTime > now) {
-            scheduleAlarm(soonTime, task, DeadlineSoonReceiver.class, 0);
-        }
+        long soon = due - 30 * 60 * 1000;
 
-        // В момент дедлайна
+        if (soon > now)
+            scheduleAlarm(soon, task, DeadlineSoonReceiver.class, 0);
+
         scheduleAlarm(due, task, DeadlineReachedReceiver.class, 1);
     }
 
-    private void scheduleAlarm(long triggerAtMillis,
-                               Task task,
-                               Class<?> receiverClass,
-                               int type) {
+    private void scheduleAlarm(long time, Task task, Class<?> cls, int type) {
+        Intent i = new Intent(this, cls);
+        i.putExtra("taskName", task.getTitle());
 
-        Intent intent = new Intent(this, receiverClass);
-        intent.putExtra("taskName", task.getTitle());
+        int code = (task.getId() + "_" + type).hashCode();
 
-        int requestCode = (task.getId() + "_" + type).hashCode();
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this,
-                requestCode,
-                intent,
+        PendingIntent pi = PendingIntent.getBroadcast(
+                this, code, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-        if (alarmManager == null) return;
-
-        try {
-            // Без setExact / setExactAndAllowWhileIdle — не нужен SCHEDULE_EXACT_ALARM
-            alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (am != null) am.set(AlarmManager.RTC_WAKEUP, time, pi);
     }
 
-    // ---------- ФИЛЬТР И СПИСОК ----------
-
+    // ---------- FILTER ----------
     private void openDatePicker() {
         final Calendar c = Calendar.getInstance();
-        int year = c.get(Calendar.YEAR);
-        int month = c.get(Calendar.MONTH);
-        int day = c.get(Calendar.DAY_OF_MONTH);
 
-        DatePickerDialog dialog = new DatePickerDialog(this,
+        DatePickerDialog dlg = new DatePickerDialog(this,
                 (view, y, m, d) -> {
+
                     Calendar cal = Calendar.getInstance();
-                    cal.set(Calendar.YEAR, y);
-                    cal.set(Calendar.MONTH, m);
-                    cal.set(Calendar.DAY_OF_MONTH, d);
-                    cal.set(Calendar.HOUR_OF_DAY, 0);
-                    cal.set(Calendar.MINUTE, 0);
-                    cal.set(Calendar.SECOND, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
+                    cal.set(y, m, d, 0, 0);
 
                     filterStartOfDay = cal.getTimeInMillis();
 
                     cal.set(Calendar.HOUR_OF_DAY, 23);
                     cal.set(Calendar.MINUTE, 59);
-                    cal.set(Calendar.SECOND, 59);
-                    cal.set(Calendar.MILLISECOND, 999);
 
                     filterEndOfDay = cal.getTimeInMillis();
 
-                    String dateText = d + "." + (m + 1) + "." + y;
-                    textSelectedFilterDate.setText(dateText);
+                    textSelectedFilterDate.setText(d + "." + (m + 1) + "." + y);
                     textClearFilter.setVisibility(TextView.VISIBLE);
 
                     applyFilter();
                 },
-                year, month, day);
+                c.get(Calendar.YEAR),
+                c.get(Calendar.MONTH),
+                c.get(Calendar.DAY_OF_MONTH)
+        );
 
-        dialog.show();
+        dlg.show();
     }
 
     private void clearFilter() {
@@ -297,19 +268,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyFilter() {
-        List<Task> toShow = new ArrayList<>();
+        List<Task> filtered = new ArrayList<>();
 
-        for (Task task : allTasks) {
-            if (filterStartOfDay == null || filterEndOfDay == null) {
-                toShow.add(task);
-            } else {
-                long t = task.getDueDateMillis();
-                if (t >= filterStartOfDay && t <= filterEndOfDay) {
-                    toShow.add(task);
-                }
+        for (Task t : allTasks) {
+
+            if (filterStartOfDay == null) {
+                filtered.add(t);
+                continue;
             }
+
+            long time = t.getDueDateMillis();
+
+            if (time >= filterStartOfDay && time <= filterEndOfDay)
+                filtered.add(t);
         }
 
-        taskAdapter.setTasks(toShow);
+        taskAdapter.setTasks(filtered);
     }
 }
